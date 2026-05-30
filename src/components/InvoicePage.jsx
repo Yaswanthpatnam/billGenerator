@@ -638,13 +638,39 @@ const InvoicePage = () => {
             {/* FOOTER */}
 
             <div className="absolute bottom-0 left-0 right-0 h-[90px] border-t-[2px] border-black flex bg-white">
-              <div className="w-1/2 border-r-[2px] border-black flex flex-col items-center justify-center">
-                <img src={signature} alt="signature" className="w-[100px]" />
+              <div
+  className="
+    w-1/2
+    border-r-[2px]
+    border-black
+    flex
+    flex-col
+    items-center
+    justify-center
+    
+  "
+>
+  <img
+  src={signature}
+  alt="signature"
+  className="
+    w-[80px]
+    object-contain
+    mb-0
+  "
+/>
 
-                <p className="text-[15px] font-semibold mt-1">
-                  Driver Signature
-                </p>
-              </div>
+ <p
+  className="
+    text-[13px]
+    font-semibold
+    leading-tight
+    mt-[2px]
+  "
+>
+    Driver Signature
+  </p>
+</div>
 
               <div className="w-1/2 flex flex-col items-center justify-center">
                 <p className="text-[15px] font-semibold mt-8">
