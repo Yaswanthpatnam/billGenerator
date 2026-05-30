@@ -314,11 +314,11 @@ const InvoicePage = () => {
                   <img src={logo} alt="logo" className="w-[115px]" />
 
                   <div className="text-center">
-                    <p className="text-[21px] font-bold">
+                    <p className="text-[20px] font-bold">
                       Trip Sheet/Cash Bill
                     </p>
 
-                    <h1 className="text-[36px] font-bold text-blue-900 leading-none tracking-wide">
+                    <h1 className="text-[34px] font-bold text-blue-900 leading-none tracking-wide">
                       TOURS & TRAVELS
                     </h1>
 
@@ -499,20 +499,21 @@ const InvoicePage = () => {
 
                   {[1, 2, 3].map((line) => (
                     <div
-                      key={line}
-                      className="
-                        border-b
-                        border-dotted
-                        border-black
-                        min-h-[28px]
-                        leading-[20px]
-                        pt-[2px]
-                        text-[14px]
-                       
-                      "
-                    >
-                      {formData.routeList.split("\n")[line - 1]}
-                    </div>
+  key={line}
+  className="
+    border-b
+    border-dotted
+    border-black
+    min-h-[28px]
+    text-[14px]
+    flex
+    items-center
+    justify-center
+    text-center
+  "
+>
+  {formData.routeList.split("\n")[line - 1]}
+</div>
                   ))}
                 </div>
 
@@ -617,7 +618,7 @@ const InvoicePage = () => {
     border-[2px]
     border-black
     border-t-0
-    h-[70px]
+    h-[68px]
     flex
     items-center
     justify-between
@@ -626,9 +627,9 @@ const InvoicePage = () => {
     bg-white
   "
                 >
-                  <p className="text-[22px] font-bold">Total Amount</p>
+                  <p className="text-[20px] font-bold">Total Amount</p>
 
-                  <p className="text-[30px] font-bold">
+                  <p className="text-[25px] font-bold">
                     {formData.totalAmount}
                   </p>
                 </div>
