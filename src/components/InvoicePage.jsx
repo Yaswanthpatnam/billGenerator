@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import logo from "../assets/logo.png";
 import signature from "../assets/signature.png";
 
-const InvoicePage = () => {
+const InvoicePage = ({ onBack }) => {
   const pdfRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
@@ -32,20 +32,23 @@ const InvoicePage = () => {
     vehicleType: "",
     vehicleNo: "",
 
-    mobileOne: "",
-    mobileTwo: "",
-
     fourHours: "",
     eightHours: "",
+
     ratePerKm: "",
     ratePerHour: "",
+
     outStation: "",
+
     checkPost: "",
     tollCharges: "",
     parkingCharges: "",
     driverBata: "",
 
     totalAmount: "",
+
+    mobileOne: "",
+    mobileTwo: "",
     date: "",
   });
 
@@ -57,15 +60,11 @@ const InvoicePage = () => {
   };
 
   const generatePDF = async () => {
-    if (loading) return;
-
-    const allFields = Object.values(formData);
-
-    const hasAtLeastOneValue = allFields.some(
-      (field) => field && field.toString().trim() !== "",
+    const hasData = Object.values(formData).some(
+      (value) => value && value.trim() !== ""
     );
 
-    if (!hasAtLeastOneValue) {
+    if (!hasData) {
       alert("Please enter at least one field before generating PDF");
       return;
     }
@@ -76,7 +75,7 @@ const InvoicePage = () => {
       const input = pdfRef.current;
 
       if (!input) {
-        alert("Invoice not found");
+        alert("Invoice element not found");
         return;
       }
 
@@ -97,22 +96,22 @@ const InvoicePage = () => {
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
-        orientation: "landscape",
+        orientation: "portrait",
         unit: "px",
-        format: [1123, 794],
+        format: [794, 1123],
         compress: false,
       });
 
       pdf.addImage(
-  imgData,
-  "PNG",
-  0,
-  0,
-  1123,
-  794,
-  undefined,
-  "FAST"
-);
+        imgData,
+        "PNG",
+        0,
+        0,
+        1123,
+        794,
+        undefined,
+        "FAST"
+      );
 
       pdf.save(`TripSheet-${formData.invoiceNo || Date.now()}.pdf`);
     } catch (error) {
@@ -144,7 +143,7 @@ const InvoicePage = () => {
             w-full
             xl:w-[28%]
             bg-white
-            rounded-lg
+            rounded-xl
             shadow-lg
             p-5
             xl:h-screen
@@ -153,7 +152,20 @@ const InvoicePage = () => {
             top-0
           "
         >
-          <h1 className="text-4xl font-bold text-blue-800 mb-6">
+          {/* Top Actions */}
+          {onBack && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-lg transition-colors cursor-pointer"
+              >
+                ← Back to Home
+              </button>
+            </div>
+          )}
+
+          <h1 className="text-3xl sm:text-4xl font-bold text-blue-800 dark:text-blue-400 mb-6">
             Trip Sheet Generator
           </h1>
 
@@ -197,10 +209,17 @@ const InvoicePage = () => {
                   w-full
                   border
                   border-gray-400
+                  dark:border-slate-600
                   p-3
                   rounded
                   text-[15px]
                   outline-none
+                  bg-white
+                  dark:bg-slate-800
+                  text-slate-900
+                  dark:text-white
+                  dark:placeholder-slate-500
+                  focus:border-blue-600
                 "
               />
             ))}
@@ -214,9 +233,16 @@ const InvoicePage = () => {
                 w-full
                 border
                 border-gray-400
+                dark:border-slate-600
                 p-3
                 rounded
                 text-[15px]
+                bg-white
+                dark:bg-slate-800
+                text-slate-900
+                dark:text-white
+                outline-none
+                focus:border-blue-600
               "
             />
 
@@ -230,9 +256,17 @@ const InvoicePage = () => {
                 w-full
                 border
                 border-gray-400
+                dark:border-slate-600
                 p-3
                 rounded
                 text-[15px]
+                bg-white
+                dark:bg-slate-800
+                text-slate-900
+                dark:text-white
+                dark:placeholder-slate-500
+                outline-none
+                focus:border-blue-600
               "
             />
 
