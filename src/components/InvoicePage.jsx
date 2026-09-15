@@ -94,11 +94,13 @@ const InvoicePage = ({ onBack }) => {
       });
 
       const imgData = canvas.toDataURL("image/png");
+      const pdfWidth = 1123;
+      const pdfHeight = Math.max(794, (canvas.height * pdfWidth) / canvas.width);
 
       const pdf = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "px",
-        format: [794, 1123],
+        format: [pdfWidth, pdfHeight],
         compress: false,
       });
 
@@ -107,13 +109,14 @@ const InvoicePage = ({ onBack }) => {
         "PNG",
         0,
         0,
-        1123,
-        794,
+        pdfWidth,
+        pdfHeight,
         undefined,
         "FAST"
       );
 
       pdf.save(`TripSheet-${formData.invoiceNo || Date.now()}.pdf`);
+
     } catch (error) {
       console.error(error);
       alert("Failed to generate PDF");
