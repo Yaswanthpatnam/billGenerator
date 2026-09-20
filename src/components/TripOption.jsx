@@ -1,4 +1,4 @@
-import { FileText, Files, ArrowRight } from "lucide-react";
+import { FileText, Files, Car, ArrowRight } from "lucide-react";
 
 export default function TripOption({ tripType, onSelectTripType, onContinue }) {
   const options = [
@@ -16,22 +16,33 @@ export default function TripOption({ tripType, onSelectTripType, onContinue }) {
       description: "Perfect for corporate sheets, recurring travel, or monthly company billing.",
       icon: Files,
     },
+    {
+      id: "multi-vehicle",
+      title: "Multi-Vehicle Bill",
+      subtitle: "Diff vehicles & trips in one bill.",
+      description: "Consolidated tax invoice for different cabs, dates, routes, and bank details.",
+      icon: Car,
+    },
   ];
 
   const statusText =
     tripType === "single"
       ? "Single trip selected — ready to create your single journey bill."
-      : "Multi trip selected — your multi-trip cash sheet workspace is ready.";
+      : tripType === "multi"
+      ? "Multi trip selected — your multi-trip cash sheet workspace is ready."
+      : "Multi-vehicle tax invoice selected — consolidated duty workspace is ready.";
 
   const continueLabel =
     tripType === "single"
       ? "Continue with single trip"
-      : "Continue with multi trip";
+      : tripType === "multi"
+      ? "Continue with multi trip"
+      : "Continue with multi-vehicle bill";
 
   return (
     <div className="w-full space-y-6">
       {/* Cards container */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {options.map((opt) => {
           const isActive = tripType === opt.id;
           const Icon = opt.icon;

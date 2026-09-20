@@ -1,61 +1,85 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 import signature from "../assets/signature.png";
+import { RotateCcw } from "lucide-react";
+
+const STORAGE_KEY = "tripbill_single_v2";
+
+const DEFAULT_FORM_DATA = {
+  invoiceNo: "",
+  customerName: "",
+  reportingTo: "",
+  openingKm: "",
+  openingHrs: "",
+  closingKm: "",
+  closingHrs: "",
+  extraKm: "",
+  extraHrs: "",
+  totalKm: "",
+  totalHrs: "",
+  routeList: "",
+  driverName: "",
+  vehicleType: "",
+  vehicleNo: "",
+  fourHours: "",
+  eightHours: "",
+  ratePerKm: "",
+  ratePerHour: "",
+  outStation: "",
+  checkPost: "",
+  tollCharges: "",
+  parkingCharges: "",
+  driverBata: "",
+  totalAmount: "",
+  mobileOne: "",
+  mobileTwo: "",
+  date: "",
+};
 
 const InvoicePage = ({ onBack }) => {
   const pdfRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    invoiceNo: "",
-    customerName: "",
-    reportingTo: "",
-
-    openingKm: "",
-    openingHrs: "",
-
-    closingKm: "",
-    closingHrs: "",
-
-    extraKm: "",
-    extraHrs: "",
-
-    totalKm: "",
-    totalHrs: "",
-
-    routeList: "",
-
-    driverName: "",
-    vehicleType: "",
-    vehicleNo: "",
-
-    fourHours: "",
-    eightHours: "",
-
-    ratePerKm: "",
-    ratePerHour: "",
-
-    outStation: "",
-
-    checkPost: "",
-    tollCharges: "",
-    parkingCharges: "",
-    driverBata: "",
-
-    totalAmount: "",
-
-    mobileOne: "",
-    mobileTwo: "",
-    date: "",
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : DEFAULT_FORM_DATA;
+    } catch {
+      return DEFAULT_FORM_DATA;
+    }
   });
 
+  // Save changes to localStorage so refreshing never loses data
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    } catch (e) {
+      console.warn("Could not save to localStorage", e);
+    }
+  }, [formData]);
+
+  const handleClear = () => {
+    if (window.confirm("Are you sure you want to clear all entered data?")) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn(e);
+      }
+      setFormData(DEFAULT_FORM_DATA);
+    }
+  };
+
   const handleChange = (e) => {
+    const val =
+      e.target.name === "vehicleNo"
+        ? e.target.value.toUpperCase()
+        : e.target.value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: val,
     });
   };
 
@@ -81,8 +105,16 @@ const InvoicePage = ({ onBack }) => {
 
       await document.fonts.ready;
 
+      // Save scroll positions and reset to 0 to prevent cropping
+      const scrollContainer = input.closest(".overflow-x-auto") || input.parentElement;
+      const savedScrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
+      const savedScrollY = window.scrollY;
+
+      if (scrollContainer) scrollContainer.scrollLeft = 0;
+      window.scrollTo(0, 0);
+
       const canvas = await html2canvas(input, {
-        scale: 5,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -93,9 +125,13 @@ const InvoicePage = ({ onBack }) => {
         foreignObjectRendering: false,
       });
 
+      // Restore user scroll immediately
+      if (scrollContainer) scrollContainer.scrollLeft = savedScrollLeft;
+      window.scrollTo(0, savedScrollY);
+
       const imgData = canvas.toDataURL("image/png");
       const pdfWidth = 1123;
-      const pdfHeight = Math.max(794, (canvas.height * pdfWidth) / canvas.width);
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
       const pdf = new jsPDF({
         orientation: "landscape",
@@ -123,6 +159,49 @@ const InvoicePage = ({ onBack }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatRouteLines = (text, maxChars = 75, minLines = 4) => {
+    if (!text || !text.trim()) return Array(minLines).fill("");
+    const rawParagraphs = text.split("\n");
+    const lines = [];
+    for (const para of rawParagraphs) {
+      const trimmed = para.trim();
+      if (!trimmed) {
+        lines.push("");
+        continue;
+      }
+      const words = trimmed.split(/\s+/);
+      let currentLine = "";
+      for (const word of words) {
+        if (word.length > maxChars) {
+          if (currentLine) {
+            lines.push(currentLine);
+            currentLine = "";
+          }
+          let remaining = word;
+          while (remaining.length > maxChars) {
+            lines.push(remaining.slice(0, maxChars));
+            remaining = remaining.slice(maxChars);
+          }
+          currentLine = remaining;
+        } else if (!currentLine) {
+          currentLine = word;
+        } else if ((currentLine + " " + word).length <= maxChars) {
+          currentLine += " " + word;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+    }
+    const count = Math.max(minLines, lines.length);
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      result.push(lines[i] || "");
+    }
+    return result;
   };
 
   const formatIndianDate = (dateString) => {
@@ -155,9 +234,9 @@ const InvoicePage = ({ onBack }) => {
             top-0
           "
         >
-          {/* Top Actions */}
-          {onBack && (
-            <div className="mb-4">
+          {/* Top Actions: Back to Home & Clear Form */}
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            {onBack && (
               <button
                 type="button"
                 onClick={onBack}
@@ -165,8 +244,16 @@ const InvoicePage = ({ onBack }) => {
               >
                 ← Back to Home
               </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={handleClear}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors cursor-pointer"
+              title="Reset all fields"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Clear Form
+            </button>
+          </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold text-blue-800 dark:text-blue-400 mb-6">
             Trip Sheet Generator
@@ -254,7 +341,7 @@ const InvoicePage = ({ onBack }) => {
               name="routeList"
               value={formData.routeList}
               onChange={handleChange}
-              placeholder="Route List"
+              placeholder="Route List (Auto-wraps across lines in bill)"
               className="
                 w-full
                 border
@@ -330,7 +417,7 @@ const InvoicePage = ({ onBack }) => {
             className="
               w-[1123px]
               min-w-[1123px]
-              h-[794px]
+              min-h-[794px]
               bg-white
               border-[3px]
               border-black
@@ -338,6 +425,9 @@ const InvoicePage = ({ onBack }) => {
               overflow-hidden
               mx-auto
               shrink-0
+              flex
+              flex-col
+              justify-between
             "
             style={{
               fontFamily: "Times New Roman",
@@ -345,7 +435,7 @@ const InvoicePage = ({ onBack }) => {
           >
             {/* HEADER */}
 
-            <div className="h-[155px] border-b-[2px] border-black relative">
+            <div className="min-h-[155px] h-[155px] border-b-[2px] border-black relative shrink-0">
               <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[720px]">
                 <div className="flex items-center justify-center gap-5">
                   <img src={logo} alt="logo" className="w-[115px]" />
@@ -412,167 +502,75 @@ const InvoicePage = ({ onBack }) => {
 
             {/* BODY */}
 
-            <div className="flex h-[500px]">
+            <div className="flex flex-1 min-h-[549px]">
               {/* LEFT */}
 
-              <div className="w-[62%] p-4 relative">
-                <div className="space-y-3 text-[14px]">
-                  <div className="flex items-center">
-  <p className="w-32 font-semibold">No.</p>
-
-  <p
-    className="
-      text-red-700
-      text-[34px]
-      font-bold
-      leading-none
-      ml-4
-    "
-  >
-    {formData.invoiceNo}
-  </p>
-</div>
-
-<div className="flex items-center mt-3">
-  <p className="w-32 font-semibold">Name</p>
-
-  <p
-    className="
-      flex-1
-      border-b
-      border-dotted
-      border-black
-      min-h-[24px]
-      leading-[18px]
-      pb-[2px]
-      pl-2
-      flex
-      items-start
-      justify-center
-    "
-  >
-    {formData.customerName}
-  </p>
-</div>
-
-<div className="flex items-center mt-3">
-  <p className="w-32  font-semibold">Reporting to</p>
-
-  <p
-    className="
-      flex-1
-      border-b
-      border-dotted
-      border-black
-      min-h-[24px]
-      leading-[18px]
-      pb-[2px]
-      pl-2
-      flex
-      items-start
-      justify-center
-    "
-  >
-    {formData.reportingTo}
-  </p>
-</div>
-
-                  {[
-                    ["Opening Km", formData.openingKm, formData.openingHrs],
-                    ["Closing Km", formData.closingKm, formData.closingHrs],
-                    ["Extra Km", formData.extraKm, formData.extraHrs],
-                    ["Total Kms", formData.totalKm, formData.totalHrs],
-                  ].map(([label, km, hrs]) => (
-                    <div key={label} className="flex items-center">
-                      <p className="w-32 font-semibold">{label}</p>
-
-                      <p
-                        className="
-                          w-[140px]
-                          border-b
-                          border-dotted
-                          border-black
-                          min-h-[24px]
-                          leading-[18px]
-                          pb-[2px]
-                          text-center
-                          flex
-                          items-start
-                          justify-center
-                        "
-                      >
-                        {km}
+              <div className="w-[62%] p-4 flex flex-col justify-between border-r-[2px] border-black">
+                <div>
+                  <div className="space-y-3 text-[14px]">
+                    <div className="flex items-center">
+                      <p className="w-32 font-semibold">No.</p>
+                      <p className="text-red-700 text-[34px] font-bold leading-none ml-4">
+                        {formData.invoiceNo}
                       </p>
-
-                      <p className="w-[70px] text-center font-semibold">at</p>
-
-                      <p
-                        className="
-                          w-[140px]
-                          border-b
-                          border-dotted
-                          border-black
-                          min-h-[24px]
-                          leading-[18px]
-                          pb-[2px]
-                          text-center
-                          flex
-                          items-start
-                          justify-center
-                        "
-                      >
-                        {hrs}
-                      </p>
-
-                      <p className="w-[70px] text-center font-semibold">Hrs</p>
                     </div>
-                  ))}
+
+                    <div className="flex items-center mt-3">
+                      <p className="w-32 font-semibold">Name</p>
+                      <p className="flex-1 border-b border-dotted border-black min-h-[24px] leading-[18px] pb-[2px] pl-2 flex items-start justify-center">
+                        {formData.customerName}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center mt-3">
+                      <p className="w-32  font-semibold">Reporting to</p>
+                      <p className="flex-1 border-b border-dotted border-black min-h-[24px] leading-[18px] pb-[2px] pl-2 flex items-start justify-center">
+                        {formData.reportingTo}
+                      </p>
+                    </div>
+
+                    {[
+                      ["Opening Km", formData.openingKm, formData.openingHrs],
+                      ["Closing Km", formData.closingKm, formData.closingHrs],
+                      ["Extra Km", formData.extraKm, formData.extraHrs],
+                      ["Total Kms", formData.totalKm, formData.totalHrs],
+                    ].map(([label, km, hrs]) => (
+                      <div key={label} className="flex items-center">
+                        <p className="w-32 font-semibold">{label}</p>
+                        <p className="w-[140px] border-b border-dotted border-black min-h-[24px] leading-[18px] pb-[2px] text-center flex items-start justify-center">
+                          {km}
+                        </p>
+                        <p className="w-[70px] text-center font-semibold">at</p>
+                        <p className="w-[140px] border-b border-dotted border-black min-h-[24px] leading-[18px] pb-[2px] text-center flex items-start justify-center">
+                          {hrs}
+                        </p>
+                        <p className="w-[70px] text-center font-semibold">Hrs</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ROUTE LIST (Smart word-wrapped, unlimited dynamic lines, never truncates) */}
+                  <div className="mt-2.5">
+                    <p className="text-[15px] font-bold mb-1">Route List</p>
+                    <div className="space-y-0.5">
+                      {formatRouteLines(formData.routeList, 75, 4).map((line, idx) => (
+                        <div
+                          key={idx}
+                          className="border-b border-dotted border-black min-h-[22px] text-[12px] leading-[20px] flex items-center justify-center text-center px-1"
+                        >
+                          {line || ""}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                {/* ROUTE */}
-
-                <div className="mt-5 h-[145px] ">
-                  <p className="text-[18px] font-bold  mb-2">Route List</p>
-
-                  {[1, 2, 3].map((line) => (
-                    <div
-  key={line}
-  className="
-    border-b
-    border-dotted
-    border-black
-    min-h-[28px]
-    text-[14px]
-    flex
-    items-center
-    justify-center
-    text-center
-  "
->
-  {formData.routeList.split("\n")[line - 1]}
-</div>
-                  ))}
-                </div>
-
-                {/* DISCLAIMERS */}
-
-                <div className="absolute mt-2 bottom-2  left-4 w-[95%] text-[12px] leading-6 font-semibold">
-                  <p>
-                    1 The Meter Reading and Timing are Calculated from Office to
-                    Office.
-                  </p>
-
+                {/* DISCLAIMERS (Static at bottom of flex column, never overlaps) */}
+                <div className="pt-2 text-[11px] leading-[17px] font-semibold border-t border-dotted border-black/40 text-black mt-3">
+                  <p>1 The Meter Reading and Timing are Calculated from Office to Office.</p>
                   <p>2 For Outstation Trip Minimum 300 Kms is applicable.</p>
-
-                  <p>
-                    3 Parking Charges before 6.00 am and after 9.00 pm
-                    Additional Bata will be Charged.
-                  </p>
-
-                  <p>
-                    4 We will not be responsible for any loss of your items in
-                    the vehicle.
-                  </p>
+                  <p>3 Parking Charges before 6.00 am and after 9.00 pm Additional Bata will be Charged.</p>
+                  <p>4 We will not be responsible for any loss of your items in the vehicle.</p>
                 </div>
               </div>
 
@@ -608,10 +606,9 @@ const InvoicePage = ({ onBack }) => {
                   ))}
                 </div>
 
-                {/* CHARGES */}
-
-                <div className="border-[2px] border-black mt-5 p-4 text-[13px]">
-                  <div className="space-y-3">
+                {/* CHARGES & TOTAL IN ONE SEAMLESS LINKED CONTAINER */}
+                <div className="border-[2px] border-black mt-5">
+                  <div className="p-4 text-[13px] space-y-3">
                     {[
                       ["4 Hours 40 Km", formData.fourHours],
                       ["8 Hours 80 Km", formData.eightHours],
@@ -628,54 +625,51 @@ const InvoicePage = ({ onBack }) => {
 
                         <p
                           className="
-    flex-1
-    border-b
-    border-dotted
-    border-black
-    min-h-[24px]
-    leading-[18px]
-    pb-[2px]
-    text-center
-    flex
-    items-center
-    justify-center
-  "
+                            flex-1
+                            border-b
+                            border-dotted
+                            border-black
+                            min-h-[24px]
+                            leading-[18px]
+                            pb-[2px]
+                            text-center
+                            flex
+                            items-center
+                            justify-center
+                          "
                         >
                           {value}
                         </p>
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* TOTAL */}
+                  {/* TOTAL (Seamlessly linked at bottom of charges box) */}
+                  <div
+                    className="
+                      border-t-[2px]
+                      border-black
+                      h-[68px]
+                      flex
+                      items-center
+                      justify-between
+                      px-8
+                      bg-white
+                    "
+                  >
+                    <p className="text-[20px] font-bold">Total Amount</p>
 
-                <div
-                  className="
-    border-[2px]
-    border-black
-    border-t-0
-    h-[68px]
-    flex
-    items-center
-    justify-between
-    px-8
-    mt-0
-    bg-white
-  "
-                >
-                  <p className="text-[20px] font-bold">Total Amount</p>
-
-                  <p className="text-[25px] font-bold">
-                    {formData.totalAmount}
-                  </p>
+                    <p className="text-[25px] font-bold">
+                      {formData.totalAmount}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* FOOTER */}
 
-            <div className="absolute bottom-0 left-0 right-0 h-[90px] border-t-[2px] border-black flex bg-white">
+            <div className="h-[90px] border-t-[2px] border-black flex bg-white shrink-0">
               <div
   className="
     w-1/2

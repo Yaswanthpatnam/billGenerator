@@ -17,14 +17,16 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-export default function LandingPage({ onInvoice, onMultiTrip }) {
+export default function LandingPage({ onInvoice, onMultiTrip, onMultiVehicle }) {
   const [tripType, setTripType] = useState("single");
 
   const handleContinue = () => {
-    if (tripType === "multi") {
-      onMultiTrip();
+    if (tripType === "multi-vehicle") {
+      onMultiVehicle?.();
+    } else if (tripType === "multi") {
+      onMultiTrip?.();
     } else {
-      onInvoice();
+      onInvoice?.();
     }
   };
 

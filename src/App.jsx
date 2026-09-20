@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import InvoicePage from "./components/InvoicePage";
 import MultiTripPage from "./components/MultiTripPage";
+import MultiVehiclePage from "./components/MultiVehiclePage";
 import LandingPage from "./components/LandingPage";
 
 export default function App() {
-  const [page, setPage] = useState("home");
+  const urlParams = new URLSearchParams(window.location.search);
+  const [page, setPage] = useState(urlParams.get("page") || "home");
 
   // Ensure default Light Mode across the document
   useEffect(() => {
@@ -21,10 +23,15 @@ export default function App() {
     return <MultiTripPage onBack={() => setPage("home")} />;
   }
 
+  if (page === "multi-vehicle") {
+    return <MultiVehiclePage onBack={() => setPage("home")} />;
+  }
+
   return (
     <LandingPage
       onInvoice={() => setPage("invoice")}
       onMultiTrip={() => setPage("multi")}
+      onMultiVehicle={() => setPage("multi-vehicle")}
     />
   );
 }

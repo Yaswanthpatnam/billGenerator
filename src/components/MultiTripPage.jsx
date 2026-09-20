@@ -1,8 +1,9 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import logo from "../assets/logo.png";
 import signature from "../assets/signature.png";
+import { RotateCcw } from "lucide-react";
 
 const getTodayDate = () => {
   const now = new Date();
@@ -23,26 +24,81 @@ const blankTrip = () => ({
   total: "",
 });
 
+const DEFAULT_CUSTOMER_DATA = {
+  tripSheetNo: "1252",
+  guestName: "",
+  companyName: "",
+  reportingTo: "",
+  driverName: "",
+  vehicleType: "",
+  vehicleNo: "",
+};
+
+const STORAGE_KEY = "tripbill_multitrip_v2";
+
 const MultiTripPage = ({ onBack }) => {
   const pdfRef = useRef(null);
   const [loading, setLoading] = useState(false);
 
-  const [customerData, setCustomerData] = useState({
-    tripSheetNo: "1252",
-    guestName: "",
-    companyName: "",
-    reportingTo: "",
-    driverName: "",
-    vehicleType: "",
-    vehicleNo: "",
+  const [customerData, setCustomerData] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY + "_customer");
+      return saved ? JSON.parse(saved) : DEFAULT_CUSTOMER_DATA;
+    } catch {
+      return DEFAULT_CUSTOMER_DATA;
+    }
   });
 
-  const [trips, setTrips] = useState([blankTrip()]);
+  const [trips, setTrips] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY + "_trips");
+      return saved ? JSON.parse(saved) : [blankTrip()];
+    } catch {
+      return [blankTrip()];
+    }
+  });
+
+  // Save changes to localStorage so refreshing never loses data
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY + "_customer",
+        JSON.stringify(customerData)
+      );
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [customerData]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY + "_trips", JSON.stringify(trips));
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [trips]);
+
+  const handleClear = () => {
+    if (window.confirm("Are you sure you want to clear all entered data?")) {
+      try {
+        localStorage.removeItem(STORAGE_KEY + "_customer");
+        localStorage.removeItem(STORAGE_KEY + "_trips");
+      } catch (e) {
+        console.warn(e);
+      }
+      setCustomerData(DEFAULT_CUSTOMER_DATA);
+      setTrips([blankTrip()]);
+    }
+  };
 
   const handleCustomerChange = (e) => {
+    const val =
+      e.target.name === "vehicleNo"
+        ? e.target.value.toUpperCase()
+        : e.target.value;
     setCustomerData({
       ...customerData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: val,
     });
   };
 
@@ -126,8 +182,16 @@ const MultiTripPage = ({ onBack }) => {
 
       await document.fonts.ready;
 
+      // Save scroll positions and reset to 0 to prevent cropping
+      const scrollContainer = input.closest(".overflow-x-auto") || input.parentElement;
+      const savedScrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
+      const savedScrollY = window.scrollY;
+
+      if (scrollContainer) scrollContainer.scrollLeft = 0;
+      window.scrollTo(0, 0);
+
       const canvas = await html2canvas(input, {
-        scale: 5,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         logging: false,
@@ -137,6 +201,10 @@ const MultiTripPage = ({ onBack }) => {
         removeContainer: true,
         foreignObjectRendering: false,
       });
+
+      // Restore user scroll immediately
+      if (scrollContainer) scrollContainer.scrollLeft = savedScrollLeft;
+      window.scrollTo(0, savedScrollY);
 
       const imgData = canvas.toDataURL("image/png");
       const pdfHeight = Math.max(1123, (canvas.height * 794) / canvas.width);
@@ -176,18 +244,26 @@ const MultiTripPage = ({ onBack }) => {
             top-0
           "
         >
-          {/* Top Actions: Back Button */}
-          {onBack && (
-            <div className="mb-4">
+          {/* Top Actions: Back Button & Clear Data */}
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+            {onBack && (
               <button
                 type="button"
                 onClick={onBack}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-lg transition cursor-pointer"
               >
                 ← Back to Home
               </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={handleClear}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition cursor-pointer"
+              title="Reset all fields"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Clear Form
+            </button>
+          </div>
 
           <div className="mb-5 pb-3 border-b border-slate-100">
             <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 leading-tight">
