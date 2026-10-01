@@ -6,9 +6,11 @@ import signature from "../assets/signature.png";
 import { RotateCcw } from "lucide-react";
 
 const STORAGE_KEY = "tripbill_single_v2";
+const SHARED_GST_KEY = "tripbill_default_gst_no";
 
 const DEFAULT_FORM_DATA = {
   invoiceNo: "",
+  gstNo: "",
   customerName: "",
   reportingTo: "",
   openingKm: "",
@@ -46,9 +48,18 @@ const InvoicePage = ({ onBack }) => {
   const [formData, setFormData] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : DEFAULT_FORM_DATA;
+      const parsed = saved ? JSON.parse(saved) : DEFAULT_FORM_DATA;
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      return {
+        ...DEFAULT_FORM_DATA,
+        ...parsed,
+        gstNo: parsed.gstNo !== undefined && parsed.gstNo !== "" ? parsed.gstNo : sharedGst,
+      };
     } catch {
-      return DEFAULT_FORM_DATA;
+      return {
+        ...DEFAULT_FORM_DATA,
+        gstNo: localStorage.getItem(SHARED_GST_KEY) || "",
+      };
     }
   });
 
@@ -68,19 +79,33 @@ const InvoicePage = ({ onBack }) => {
       } catch (e) {
         console.warn(e);
       }
-      setFormData(DEFAULT_FORM_DATA);
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      setFormData({
+        ...DEFAULT_FORM_DATA,
+        gstNo: sharedGst,
+      });
     }
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     const val =
-      e.target.name === "vehicleNo"
-        ? e.target.value.toUpperCase()
-        : e.target.value;
-    setFormData({
-      ...formData,
-      [e.target.name]: val,
-    });
+      name === "vehicleNo"
+        ? value.toUpperCase()
+        : value;
+
+    if (name === "gstNo") {
+      try {
+        localStorage.setItem(SHARED_GST_KEY, value);
+      } catch (err) {
+        console.warn("Could not save shared GST to localStorage", err);
+      }
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: val,
+    }));
   };
 
   const generatePDF = async () => {
@@ -262,6 +287,7 @@ const InvoicePage = ({ onBack }) => {
           <div className="space-y-3">
             {[
               ["invoiceNo", "Invoice No"],
+              ["gstNo", "GST No"],
               ["customerName", "Customer Name"],
               ["reportingTo", "Reporting To"],
               ["mobileOne", "Mobile Number 1"],
@@ -436,6 +462,12 @@ const InvoicePage = ({ onBack }) => {
             {/* HEADER */}
 
             <div className="min-h-[155px] h-[155px] border-b-[2px] border-black relative shrink-0">
+              {/* GST No - Left of AK Logo */}
+              <div className="absolute left-6 top-6 flex items-center gap-1.5 text-[14px] font-bold text-black tracking-wide">
+                <span>GST No :</span>
+                <span className="font-semibold text-[14px]">{formData.gstNo || ""}</span>
+              </div>
+
               <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[720px]">
                 <div className="flex items-center justify-center gap-5">
                   <img src={logo} alt="logo" className="w-[115px]" />

@@ -26,6 +26,7 @@ const blankTrip = () => ({
 
 const DEFAULT_CUSTOMER_DATA = {
   tripSheetNo: "1252",
+  gstNo: "",
   guestName: "",
   companyName: "",
   reportingTo: "",
@@ -35,6 +36,7 @@ const DEFAULT_CUSTOMER_DATA = {
 };
 
 const STORAGE_KEY = "tripbill_multitrip_v2";
+const SHARED_GST_KEY = "tripbill_default_gst_no";
 
 const MultiTripPage = ({ onBack }) => {
   const pdfRef = useRef(null);
@@ -43,9 +45,18 @@ const MultiTripPage = ({ onBack }) => {
   const [customerData, setCustomerData] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY + "_customer");
-      return saved ? JSON.parse(saved) : DEFAULT_CUSTOMER_DATA;
+      const parsed = saved ? JSON.parse(saved) : DEFAULT_CUSTOMER_DATA;
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      return {
+        ...DEFAULT_CUSTOMER_DATA,
+        ...parsed,
+        gstNo: parsed.gstNo !== undefined && parsed.gstNo !== "" ? parsed.gstNo : sharedGst,
+      };
     } catch {
-      return DEFAULT_CUSTOMER_DATA;
+      return {
+        ...DEFAULT_CUSTOMER_DATA,
+        gstNo: localStorage.getItem(SHARED_GST_KEY) || "",
+      };
     }
   });
 
@@ -86,20 +97,29 @@ const MultiTripPage = ({ onBack }) => {
       } catch (e) {
         console.warn(e);
       }
-      setCustomerData(DEFAULT_CUSTOMER_DATA);
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      setCustomerData({
+        ...DEFAULT_CUSTOMER_DATA,
+        gstNo: sharedGst,
+      });
       setTrips([blankTrip()]);
     }
   };
 
   const handleCustomerChange = (e) => {
-    const val =
-      e.target.name === "vehicleNo"
-        ? e.target.value.toUpperCase()
-        : e.target.value;
-    setCustomerData({
-      ...customerData,
-      [e.target.name]: val,
-    });
+    const { name, value } = e.target;
+    const val = name === "vehicleNo" ? value.toUpperCase() : value;
+    if (name === "gstNo") {
+      try {
+        localStorage.setItem(SHARED_GST_KEY, value);
+      } catch (err) {
+        console.warn("Could not save shared GST to localStorage", err);
+      }
+    }
+    setCustomerData((prev) => ({
+      ...prev,
+      [name]: val,
+    }));
   };
 
   const handleTripChange = (index, field, value) => {
@@ -292,6 +312,21 @@ const MultiTripPage = ({ onBack }) => {
                     className="w-20 border border-gray-400 dark:border-slate-600 px-2 py-1 rounded text-sm font-bold text-red-600 outline-none bg-white dark:bg-slate-800 dark:text-red-400 text-center"
                   />
                 </div>
+              </div>
+
+              {/* GST No field */}
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  GST Number
+                </label>
+                <input
+                  type="text"
+                  name="gstNo"
+                  value={customerData.gstNo || ""}
+                  onChange={handleCustomerChange}
+                  placeholder="e.g. 29ABCDE1234F1Z5"
+                  className="w-full border border-gray-300 dark:border-slate-600 p-2.5 sm:p-3 rounded-lg text-[15px] sm:text-[16px] outline-none bg-white dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 focus:border-blue-600 dark:focus:border-blue-500"
+                />
               </div>
 
               {/* Left column fields */}
@@ -649,6 +684,12 @@ const MultiTripPage = ({ onBack }) => {
 
               {/* TRIP SHEET NO ON LEFT & CASH BILL CENTERED */}
               <div className="relative my-2 flex items-center justify-center min-h-[32px]">
+                {/* GST No - above Trip Sheet No */}
+                <div className="absolute left-0 -top-6 flex items-center gap-1.5 pl-0.5 text-[14px] font-bold text-black whitespace-nowrap">
+                  <span>GST No :</span>
+                  <span className="font-semibold text-[14px]">{customerData.gstNo || ""}</span>
+                </div>
+
                 <div className="absolute left-0 flex items-center gap-1.5 pl-0.5">
                   <span className="text-[15px] font-bold text-black whitespace-nowrap">
                     Trip Sheet No

@@ -18,6 +18,7 @@ const COLUMNS = [
 
 const DEFAULT_INVOICE_DATA = {
   invoiceNo: "876",
+  gstNo: "",
   date: "28-02-2026",
   billTo: "C/O CREATION",
   phone: "8970094480",
@@ -33,6 +34,7 @@ const DEFAULT_TRIPS = [
 ];
 
 const STORAGE_KEY = "tripbill_multivehicle_v2";
+const SHARED_GST_KEY = "tripbill_default_gst_no";
 
 export default function MultiVehiclePage({ onBack }) {
   const pdfRef = useRef(null);
@@ -42,9 +44,18 @@ export default function MultiVehiclePage({ onBack }) {
   const [invoiceData, setInvoiceData] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY + "_meta");
-      return saved ? JSON.parse(saved) : DEFAULT_INVOICE_DATA;
+      const parsed = saved ? JSON.parse(saved) : DEFAULT_INVOICE_DATA;
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      return {
+        ...DEFAULT_INVOICE_DATA,
+        ...parsed,
+        gstNo: parsed.gstNo !== undefined && parsed.gstNo !== "" ? parsed.gstNo : sharedGst,
+      };
     } catch {
-      return DEFAULT_INVOICE_DATA;
+      return {
+        ...DEFAULT_INVOICE_DATA,
+        gstNo: localStorage.getItem(SHARED_GST_KEY) || "",
+      };
     }
   });
 
@@ -93,7 +104,11 @@ export default function MultiVehiclePage({ onBack }) {
       } catch (e) {
         console.warn(e);
       }
-      setInvoiceData(DEFAULT_INVOICE_DATA);
+      const sharedGst = localStorage.getItem(SHARED_GST_KEY) || "";
+      setInvoiceData({
+        ...DEFAULT_INVOICE_DATA,
+        gstNo: sharedGst,
+      });
       setTrips(DEFAULT_TRIPS);
     }
   };
@@ -293,6 +308,27 @@ export default function MultiVehiclePage({ onBack }) {
                     setInvoiceData({ ...invoiceData, billTo: e.target.value })
                   }
                   placeholder="C/O CREATION"
+                  className="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-blue-600 font-medium bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-0.5">
+                  GST Number
+                </label>
+                <input
+                  type="text"
+                  value={invoiceData.gstNo || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    try {
+                      localStorage.setItem(SHARED_GST_KEY, val);
+                    } catch (err) {
+                      console.warn("Could not save shared GST to localStorage", err);
+                    }
+                    setInvoiceData({ ...invoiceData, gstNo: val });
+                  }}
+                  placeholder="e.g. 29ABCDE1234F1Z5"
                   className="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-blue-600 font-medium bg-white"
                 />
               </div>
@@ -525,7 +561,13 @@ export default function MultiVehiclePage({ onBack }) {
           >
             <div>
               {/* TOP HEADER: LOGO + TOURS & TRAVELS (Aligned in exact same horizontal line) */}
-              <div className="border-b-[2px] border-black py-2.5 px-4 bg-white flex items-center justify-center">
+              <div className="border-b-[2px] border-black py-2.5 px-4 bg-white relative flex items-center justify-center">
+                {/* GST No - Left of AK Logo */}
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-[14px] font-bold text-black tracking-wide">
+                  <span>GST No :</span>
+                  <span className="font-semibold text-[14px]">{invoiceData.gstNo || ""}</span>
+                </div>
+
                 <div className="inline-flex items-center justify-center gap-3.5">
                   <img
                     src={logoTight}
